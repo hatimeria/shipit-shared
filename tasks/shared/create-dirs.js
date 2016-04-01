@@ -41,7 +41,7 @@ module.exports = function(gruntOrShipit) {
           return mapPromise(shipit.config.shared.dirs, createDir)
               .then(mapPromise(shipit.config.shared.files, createDir))
               .then(function() {
-                shipit.emit('sharedDirsCreated');
+                shipit.emit('sharedDirsCollected');
               });
         });
   };
@@ -60,7 +60,7 @@ module.exports = function(gruntOrShipit) {
           shipit.log(chalk.red(util.format(errorMsg, shipit.config.shared.shipitMethod)));
         })
         .then(function () {
-          shipit.emit('sharedDirsExecuted');
+          shipit.emit('sharedDirsCreated');
         });
     }
   };
