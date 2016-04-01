@@ -49,10 +49,10 @@ module.exports = function(gruntOrShipit) {
   var execute = function execute() {
     var shipit = utils.getShipit(gruntOrShipit);
     if(createCmds.length) {
-      var successMsg = 'Directories created on %s.';
+      var successMsg = 'Directories exist on %s.';
       var errorMsg = 'Could not create directories on %s.';
 
-      shipit.log(chalk.green('Creating multiple folders on remote.'));
+      shipit.log(chalk.green('Ensuring to have shared folders (multiple check at once) on remote.'));
       return shipit.remote(createCmds.join(' ; '))
         .then(function() {
           shipit.log(chalk.green(util.format(successMsg, shipit.config.shared.shipitMethod)));
