@@ -3,6 +3,7 @@ var chalk = require('chalk');
 var _ = require('lodash');
 var util = require('util');
 var init = require('../../lib/init');
+var mapPromise = require('../../lib/map-promise');
 var Promise = require('bluebird');
 var path = require('path2/posix');
 
@@ -11,7 +12,7 @@ var path = require('path2/posix');
  */
 
 module.exports = function(gruntOrShipit) {
-
+  var createCmds = [];
   var task = function task() {
     var shipit = utils.getShipit(gruntOrShipit);
     var remote = true;
@@ -24,84 +25,50 @@ module.exports = function(gruntOrShipit) {
       return el.isFile ? util.format('$(dirname %s)', filePath) : filePath;
     };
 
-    var createMultipleDirs = function (els) {
-      var successMsg = 'Directories created on %s: %s.';
-      var errorMsg = 'Could not create directories on %s: %s.';
-      var sharedDirs = [];
-      var targetDirs = [];
-
-      _.forEach(els, function (el) {
-        sharedDirs.push(getPathStr(el));
-        targetDirs.push(getPathStr(el, shipit.releasePath));
-      });
-      targetDirs = targetDirs.join(' ');
-      sharedDirs = sharedDirs.join(' ');
-
-      return shipit[shipit.config.shared.shipitMethod](util.format('mkdir -p %s', sharedDirs))
-          .then(function() {
-            shipit.log(chalk.green(util.format(successMsg, shipit.config.shared.shipitMethod, sharedDirs)));
-          }, function() {
-            shipit.log(chalk.red(util.format(errorMsg, shipit.config.shared.shipitMethod, sharedDirs)));
-          })
-          .then(function() {
-            if (shipit.config.shared.remote && shipit.releasePath) {
-              return shipit.remote(util.format('mkdir -p %s', targetDirs))
-                  .then(function() {
-                    shipit.log(chalk.green(util.format(successMsg, shipit.config.shared.shipitMethod, targetDirs)));
-                  }, function() {
-                    shipit.log(chalk.red(util.format(errorMsg, shipit.config.shared.shipitMethod, targetDirs)));
-                  });
-            }
-
-            return Promise.resolve();
-          });
-    };
-
     var createDir = function createDir(el) {
-      var successMsg = 'Directory created on %s: %s.';
-      var errorMsg = 'Could not create directory on %s: %s.';
-      var srcPath = path.join(shipit.config.shared.basePath, el.path);
-      var targetPath;
+      createCmds.push(util.format('mkdir -p %s', getPathStr(el)));
 
-      return shipit[shipit.config.shared.shipitMethod](
-        util.format('mkdir -p %s', getPathStr(el))
-      )
-      .then(function() {
-        shipit.log(chalk.green(util.format(successMsg, shipit.config.shared.shipitMethod, srcPath)));
-      }, function() {
-        shipit.log(chalk.red(util.format(errorMsg, shipit.config.shared.shipitMethod, srcPath)));
-      })
-      .then(function() {
-        if (shipit.config.shared.remote && shipit.releasePath) {
-          targetPath = path.join(shipit.releasePath, el.path);
-
-          return shipit.remote(
-            util.format('mkdir -p %s', getPathStr(el, shipit.releasePath))
-          )
-          .then(function() {
-            shipit.log(chalk.green(util.format(successMsg, shipit.config.shared.shipitMethod, targetPath)));
-          }, function() {
-            shipit.log(chalk.red(util.format(errorMsg, shipit.config.shared.shipitMethod, targetPath)));
-          });
-        }
-
-        return Promise.resolve();
-      });
+      if (shipit.config.shared.remote && shipit.releasePath) {
+        createCmds.push(util.format('mkdir -p %s', getPathStr(el, shipit.releasePath)));
+      }
+      return Promise.resolve();
     };
 
     return init(shipit)
         .then(function(shipit) {
           shipit.log(util.format('Creating shared directories on %s.', shipit.config.shared.shipitMethod));
 
-          return createMultipleDirs(shipit.config.shared.dirs)
-              .then(function () {
-                return createMultipleDirs(shipit.config.shared.files);
-              })
+          return mapPromise(shipit.config.shared.dirs, createDir)
+              .then(mapPromise(shipit.config.shared.files, createDir))
               .then(function() {
                 shipit.emit('sharedDirsCreated');
               });
         });
   };
 
-  utils.registerTask(gruntOrShipit, 'shared:create-dirs', task);
+  var execute = function execute() {
+    var shipit = utils.getShipit(gruntOrShipit);
+    if(createCmds.length) {
+      var successMsg = 'Directories created on %s.';
+      var errorMsg = 'Could not create directories on %s.';
+
+      shipit.log(chalk.green('Creating multiple folders on remote.'));
+      return shipit.remote(createCmds.join(' ; '))
+        .then(function() {
+          shipit.log(chalk.green(util.format(successMsg, shipit.config.shared.shipitMethod)));
+        }, function() {
+          shipit.log(chalk.red(util.format(errorMsg, shipit.config.shared.shipitMethod)));
+        })
+        .then(function () {
+          shipit.emit('sharedDirsExecuted');
+        });
+    }
+  };
+
+  utils.registerTask(gruntOrShipit, 'shared:create-dirs-collect', task);
+  utils.registerTask(gruntOrShipit, 'shared:create-dirs-execute', execute);
+  utils.registerTask(gruntOrShipit, 'shared:create-dirs', [
+    'shared:create-dirs-collect',
+    'shared:create-dirs-execute'
+  ]);
 };
