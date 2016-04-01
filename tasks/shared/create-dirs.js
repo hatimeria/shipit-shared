@@ -25,8 +25,8 @@ module.exports = function(gruntOrShipit) {
     };
 
     var createMultipleDirs = function (els) {
-      var successMsg = 'Directory created on %s: %s.';
-      var errorMsg = 'Could not create directory on %s: %s.';
+      var successMsg = 'Directories created on %s: %s.';
+      var errorMsg = 'Could not create directories on %s: %s.';
       var sharedDirs = [];
       var targetDirs = [];
 
