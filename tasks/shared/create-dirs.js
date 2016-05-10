@@ -12,25 +12,19 @@ var path = require('path2/posix');
  */
 
 module.exports = function(gruntOrShipit) {
-  var createCmds = [];
+  var foldersToCreate = [];
   var task = function task() {
     var shipit = utils.getShipit(gruntOrShipit);
-    var remote = true;
-    var method = remote ? 'remote' : 'local';
 
     var getPathStr = function(el, basePath) {
       basePath = basePath || shipit.config.shared.basePath;
       var filePath = shipit.config.shared.remote ? path.join(basePath, el.path) : el.path;
 
-      return el.isFile ? util.format('$(dirname %s)', filePath) : filePath;
+      return el.isFile ? path.dirname(filePath) : filePath;
     };
 
     var createDir = function createDir(el) {
-      createCmds.push(util.format('mkdir -p %s', getPathStr(el)));
-
-      if (shipit.config.shared.remote && shipit.releasePath) {
-        createCmds.push(util.format('mkdir -p %s', getPathStr(el, shipit.releasePath)));
-      }
+      foldersToCreate.push(getPathStr(el, shipit.releasePath));
       return Promise.resolve();
     };
 
@@ -48,10 +42,10 @@ module.exports = function(gruntOrShipit) {
 
   var execute = function execute() {
     var shipit = utils.getShipit(gruntOrShipit);
-    if(createCmds.length) {
-
+    if(foldersToCreate.length) {
       shipit.log(chalk.green('Ensuring to have shared folders (multiple check at once) on remote.'));
-      return shipit.remote(createCmds.join(' ; '))
+
+      return shipit.remote(util.format('mkdir -p %s', foldersToCreate.join(' ')))
         .then(function() {
           shipit.log(chalk.green(util.format('Directories exist on %s.', shipit.config.shared.shipitMethod)));
         }, function() {
