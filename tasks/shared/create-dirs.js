@@ -24,7 +24,11 @@ module.exports = function(gruntOrShipit) {
     };
 
     var createDir = function createDir(el) {
-      foldersToCreate.push(getPathStr(el, shipit.releasePath));
+      foldersToCreate.push(util.format('mkdir -p %s', getPathStr(el)));
+      if (shipit.config.shared.remote && shipit.releasePath) {
+        foldersToCreate.push(util.format('mkdir -p %s', getPathStr(el, shipit.releasePath)));
+      }
+
       return Promise.resolve();
     };
 
