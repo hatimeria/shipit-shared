@@ -43,7 +43,7 @@
     "moment": "^2.9.0",
     "path-is-absolute": "^1.0.0",
     "path2": "^0.1.0",
-    "shipit-deploy": "^2.1.2",
+    "shipit-deploy": "hatimeria/shipit-deploy",
     "shipit-utils": "^1.0.2",
     "sprintf-js": "^1.0.2"
   },
